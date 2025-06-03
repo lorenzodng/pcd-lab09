@@ -10,27 +10,27 @@ import it.unibo.pcd.akka.cluster.*
 
 object ShowEvents:
   def apply(): Behavior[MemberEvent | LeaderChanged] = Behaviors.setup { ctx => //
-    val cluster = Cluster(ctx.system) // get the reference of the cluster in which the actor belongs
-    // receive all the event of the cluster in which the actor belongs, (via pub sub pattern)
-    classOf[MemberEvent] :: classOf[LeaderChanged] :: Nil foreach (event => // I can Subscribe to multiple events
-      cluster.subscriptions ! Subscribe(ctx.self, event)
+    val cluster = Cluster(ctx.system) //prendo il riferimento del cluster a cui l'attore appartiene
+    classOf[MemberEvent] :: classOf[LeaderChanged] :: Nil foreach (event => 
+      cluster.subscriptions ! Subscribe(ctx.self, event) //iscrivo l'attore alla ricezione degli eventi di tipo MemberEvent e LeaderChanged provienenti dal cluster
     )
-    Behaviors.receiveMessage { msg =>
+    Behaviors.receiveMessage { msg => //definisco il comportamento di risposta, eseguito quando l'attore riceve i messaggi
       ctx.log.info(s"EVENT LISTENER: ${msg.toString}")
       Behaviors.same
     }
   }
 
+//metodo che crea un actor system su una determinata porta, impostando i nodi seed come valori di fallback
 def startup(port: Int)(root: => Behavior[_]): Unit =
-  // Override the configuration of the port
   val config = ConfigFactory
     .parseString(s"""akka.remote.artery.canonical.port=$port""")
     .withFallback(ConfigFactory.load("base-cluster"))
-
   // Create an Akka system
   ActorSystem(root, "ClusterSystem", config)
+
+//creo due actor system su due porte diverse  
 @main def multipleActorsSystems(): Unit =
-  startup(seeds.head)(ShowEvents())
+  startup(seeds.head)(ShowEvents()) 
   startup(seeds.last)(Behaviors.empty)
 
 // To run multiple jvm, use:
